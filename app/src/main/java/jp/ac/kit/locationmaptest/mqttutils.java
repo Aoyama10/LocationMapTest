@@ -8,6 +8,11 @@ import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.eclipse.paho.client.mqttv3.MqttPersistenceException;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 
+import java.security.SecureRandom;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
+
 public abstract class mqttutils implements MqttCallback {
     private static MqttClient client;
 
@@ -21,10 +26,23 @@ public abstract class mqttutils implements MqttCallback {
             options.setUserName(username);
             options.setPassword(password.toCharArray());
             MemoryPersistence persistance = new MemoryPersistence();
-            client = new MqttClient("tcp://" + url + ":1883", "client1", persistance);
+            client = new MqttClient("ssl://" + url + ":1883", "client1", persistance);
+
+            //SSL
+            SSLContext sslContext = SSLContext.getInstance("SSL");
+            TrustManagerFactory trustManagerFactory =
+                    TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+            //keystore
+            trustManagerFactory.init();
+            sslContext.init(null, trustManagerFactory.getTrustManagers(), new SecureRandom());
+
+            options.setSocketFactory(sslContext.getSocketFactory());
+
             client.setCallback(this);
             client.connect(options);
+
             return true;
+
         } catch (MqttException e) {
             e.printStackTrace();
         } catch (Exception e) {
@@ -46,6 +64,7 @@ public abstract class mqttutils implements MqttCallback {
         }
         return false;
     }
+
 
     @Override
     public void messageArrived(String topic, MqttMessage message) {
